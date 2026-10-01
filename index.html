@@ -11,7 +11,7 @@
       user-select: none;
     }
     body {
-      background: #0f1016;
+      background: #0d0f18;
       color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       display: flex;
@@ -21,29 +21,29 @@
       min-height: 100vh;
       overflow: hidden;
     }
-    #ui-container {
-      position: absolute;
-      top: 15px;
-      display: flex;
-      gap: 30px;
-      font-size: 22px;
-      font-weight: bold;
-      z-index: 10;
-      background: rgba(18, 18, 30, 0.75);
-      padding: 12px 35px;
-      border-radius: 40px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(8px);
-    }
-    .game-box {
+    /* 遊戲主容器 */
+    #game-container {
       position: relative;
       width: 960px;
-      height: 640px;
-      border-radius: 20px;
+      height: 600px;
+      border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
       border: 2px solid #3f72af;
       background: #000;
+    }
+    /* 進入全螢幕時的滿版樣式 */
+    #game-container:fullscreen {
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      border: none;
+    }
+    #game-container:-webkit-full-screen {
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      border: none;
     }
     video {
       display: none;
@@ -52,34 +52,76 @@
       width: 100%;
       height: 100%;
       display: block;
-      /* 水平鏡像，還原玩家面對鏡子的反射直覺 */
+      /* 鏡像翻轉，確保動作符合鏡像直覺 */
       transform: scaleX(-1);
     }
+    /* 頂部資訊 HUD */
+    #ui-hud {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 25px;
+      font-size: 20px;
+      font-weight: bold;
+      z-index: 15;
+      background: rgba(15, 20, 35, 0.8);
+      padding: 10px 28px;
+      border-radius: 35px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+    }
+    /* 全螢幕切換按鈕 */
+    #fullscreen-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 16;
+      background: rgba(15, 20, 35, 0.85);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: background 0.2s, transform 0.2s;
+    }
+    #fullscreen-btn:hover {
+      background: #3f72af;
+      transform: scale(1.08);
+    }
+    /* 遊戲結算與開頭遮罩 */
     #overlay-screen {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(10, 10, 20, 0.88);
+      background: rgba(10, 12, 20, 0.88);
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       z-index: 20;
       text-align: center;
-      padding: 20px;
+      padding: 24px;
     }
     .guide-box {
-      margin: 20px 0;
+      margin: 18px 0;
       text-align: left;
       font-size: 16px;
       line-height: 1.8;
       background: rgba(255, 255, 255, 0.08);
-      padding: 16px 24px;
+      padding: 16px 26px;
       border-radius: 12px;
+      max-width: 500px;
     }
-    button {
+    button.action-btn {
       margin-top: 10px;
       padding: 14px 45px;
       font-size: 20px;
@@ -92,7 +134,7 @@
       box-shadow: 0 4px 15px rgba(63, 114, 175, 0.4);
       transition: transform 0.2s, background 0.2s;
     }
-    button:hover {
+    button.action-btn:hover {
       background: #112d4e;
       transform: scale(1.05);
     }
@@ -104,27 +146,31 @@
 </head>
 <body>
 
-  <div id="ui-container">
-    <div>分數: <span id="score-text" style="color: #00ffcc;">0</span></div>
-    <div>倒數: <span id="timer-text" style="color: #ffbe0b;">60</span> 秒</div>
-  </div>
+  <div id="game-container">
+    <button id="fullscreen-btn" title="切換全螢幕">⛶</button>
 
-  <div class="game-box">
+    <div id="ui-hud">
+      <div>分數: <span id="score-text" style="color: #00ffcc;">0</span></div>
+      <div>倒數: <span id="timer-text" style="color: #ffbe0b;">60</span> 秒</div>
+    </div>
+
     <video id="webcam" playsinline></video>
-    <canvas id="output-canvas" width="960" height="640"></canvas>
+    <canvas id="output-canvas"></canvas>
     
     <div id="overlay-screen">
-      <h1 id="screen-title" style="font-size: 38px; color: #f9f7f7;">全身動感避障與頂球</h1>
+      <h1 id="screen-title" style="font-size: 38px;">全身體感頂球與避障</h1>
       <div class="guide-box">
-        <p>⚽ <strong>綠色球 (加 15 分)</strong>：用「頭部頂擊」或「雙手拍打」接住它！</p>
-        <p>💣 <strong>紅色炸彈 (扣 20 分)</strong>：從上方掉落，請「左右閃避身軀」不要碰到！</p>
-        <p>💡 提示：請退後約 1.5 ~ 2 公尺，確保鏡頭能捕捉上半身或全身。</p>
+        <p>⚽ <strong>綠色球 (+15 分)</strong>：用「頭部頂擊」或「雙手拍打」得分！</p>
+        <p>💣 <strong>紅色炸彈 (-20 分)</strong>：左右橫移閃避身軀，請勿碰觸！</p>
+        <p>💡 提示：點擊右上角 <strong>⛶</strong> 進入全螢幕，退後 2 公尺體驗最佳！</p>
       </div>
-      <button id="start-btn">開始挑戰</button>
+      <button id="start-btn" class="action-btn">開始挑戰</button>
     </div>
   </div>
 
   <script>
+    const container = document.getElementById('game-container');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
     const videoElement = document.getElementById('webcam');
     const canvasElement = document.getElementById('output-canvas');
     const canvasCtx = canvasElement.getContext('2d');
@@ -138,32 +184,62 @@
     let timeLeft = 60;
     let isPlaying = false;
     let timerInterval = null;
-    let entities = []; // 包含得分球與掉落炸彈
+    let entities = [];
     let detectedPose = null;
 
-    // Web Audio API 即時合成音效
+    // 自適應調整畫布尺寸（確保全螢幕或視窗縮放時像素對齊）
+    function resizeCanvas() {
+      canvasElement.width = container.clientWidth;
+      canvasElement.height = container.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // 全螢幕切換邏輯
+    function toggleFullScreen() {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (container.requestFullscreen) {
+          container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+          container.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    }
+    fullscreenBtn.addEventListener('click', toggleFullScreen);
+
+    document.addEventListener('fullscreenchange', () => {
+      resizeCanvas();
+      fullscreenBtn.textContent = document.fullscreenElement ? '🗗' : '⛶';
+    });
+
+    // Web Audio 音效產生器
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    function playHitBallSound() {
+    function playHitTone() {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
+      osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.12);
       gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.12);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.15);
+      osc.stop(audioCtx.currentTime + 0.12);
     }
 
-    function playExplodeSound() {
+    function playExplodeTone() {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.25);
+      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(45, audioCtx.currentTime + 0.25);
       gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
       gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.25);
       osc.connect(gain);
@@ -172,34 +248,31 @@
       osc.stop(audioCtx.currentTime + 0.25);
     }
 
-    // 生成物體：得分球（由下往上漂浮或定點落下）或炸彈（上方掉落）
+    // 生成物件（球體或炸彈）
     function spawnEntity() {
-      const isBomb = Math.random() < 0.35; // 35% 機率是炸彈
+      const isBomb = Math.random() < 0.35;
       const radius = isBomb ? 26 : 30;
       entities.push({
         type: isBomb ? 'bomb' : 'ball',
         x: radius + Math.random() * (canvasElement.width - radius * 2),
-        y: -30,
-        speedY: 2.5 + Math.random() * 3.5,
+        y: -35,
+        speedY: 2.8 + Math.random() * 3.5,
         radius: radius,
-        color: isBomb ? '#ff0055' : '#00f5d4'
+        color: isBomb ? '#ff2a5f' : '#00f5d4'
       });
     }
 
-    // 骨架連線關節對應定義
+    // 骨架連線定義
     const POSE_CONNECTIONS = [
-      [11, 12], // 雙肩
-      [11, 13], [13, 15], // 左臂
-      [12, 14], [14, 16], // 右臂
-      [11, 23], [12, 24], // 軀幹
-      [23, 24]  // 骨盆
+      [11, 12], [11, 13], [13, 15],
+      [12, 14], [14, 16], [11, 23],
+      [12, 24], [23, 24]
     ];
 
     function drawSkeleton(landmarks) {
-      canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
       canvasCtx.lineWidth = 3;
       
-      // 繪製骨幹連線
       for (let [p1, p2] of POSE_CONNECTIONS) {
         const ptA = landmarks[p1];
         const ptB = landmarks[p2];
@@ -211,24 +284,22 @@
         }
       }
 
-      // 繪製頂球/拍擊的主動部位節點光環 (頭部 0, 雙手腕 15, 16)
+      // 頭部與手部光圈標記
       [0, 15, 16].forEach(idx => {
         const pt = landmarks[idx];
         if (pt && pt.visibility > 0.5) {
-          const px = pt.x * canvasElement.width;
-          const py = pt.y * canvasElement.height;
           canvasCtx.beginPath();
-          canvasCtx.arc(px, py, idx === 0 ? 25 : 16, 0, 2 * Math.PI);
-          canvasCtx.fillStyle = idx === 0 ? 'rgba(255, 215, 0, 0.5)' : 'rgba(0, 255, 200, 0.6)';
+          canvasCtx.arc(pt.x * canvasElement.width, pt.y * canvasElement.height, idx === 0 ? 25 : 18, 0, 2 * Math.PI);
+          canvasCtx.fillStyle = idx === 0 ? 'rgba(255, 215, 0, 0.5)' : 'rgba(0, 245, 212, 0.6)';
           canvasCtx.fill();
         }
       });
     }
 
-    // 遊戲主渲染循環
+    // 主動畫更新循環
     function renderLoop() {
       canvasCtx.save();
-      // 繪製相機畫面底圖
+      // 繪製視訊背景
       canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
 
       if (detectedPose && detectedPose.poseLandmarks) {
@@ -240,14 +311,13 @@
           spawnEntity();
         }
 
-        // 碰撞檢測各部位
         const landmarks = detectedPose?.poseLandmarks;
 
         for (let i = entities.length - 1; i >= 0; i--) {
           const e = entities[i];
           e.y += e.speedY;
 
-          // 繪製目標物件
+          // 繪製物件
           canvasCtx.beginPath();
           canvasCtx.arc(e.x, e.y, e.radius, 0, 2 * Math.PI);
           canvasCtx.fillStyle = e.color;
@@ -259,32 +329,18 @@
           let hit = false;
 
           if (landmarks) {
-            // 定義頂球部位（頭部 0, 雙手腕 15, 16）
-            const interactionPoints = [
-              { idx: 0, rad: 30 },  // 頭部（鼻子週圍）
-              { idx: 15, rad: 20 }, // 左手腕
-              { idx: 16, rad: 20 }  // 右手腕
-            ];
+            // 接球判定：頭部 (0)、雙手腕 (15, 16)
+            // 傷害判定：頭部、雙肩 (11, 12)、骨盆 (23, 24)
+            const checkPoints = e.type === 'ball'
+              ? [{ idx: 0, rad: 30 }, { idx: 15, rad: 22 }, { idx: 16, rad: 22 }]
+              : [{ idx: 0, rad: 30 }, { idx: 11, rad: 25 }, { idx: 12, rad: 25 }, { idx: 23, rad: 25 }, { idx: 24, rad: 25 }];
 
-            // 定義會被炸彈炸到的身體部位（頭、肩、軀幹中心）
-            const bodyHurtPoints = [
-              { idx: 0, rad: 30 },  // 頭
-              { idx: 11, rad: 25 }, // 左肩
-              { idx: 12, rad: 25 }, // 右肩
-              { idx: 23, rad: 25 }, // 左腰
-              { idx: 24, rad: 25 }  // 右腰
-            ];
-
-            const targetCheckPoints = e.type === 'ball' ? interactionPoints : bodyHurtPoints;
-
-            for (let check of targetCheckPoints) {
+            for (let check of checkPoints) {
               const lm = landmarks[check.idx];
               if (lm && lm.visibility > 0.5) {
                 const lx = lm.x * canvasElement.width;
                 const ly = lm.y * canvasElement.height;
-                const dist = Math.hypot(lx - e.x, ly - e.y);
-
-                if (dist < e.radius + check.rad) {
+                if (Math.hypot(lx - e.x, ly - e.y) < e.radius + check.rad) {
                   hit = true;
                   break;
                 }
@@ -294,18 +350,17 @@
 
           if (hit) {
             if (e.type === 'ball') {
-              playHitBallSound();
+              playHitTone();
               score += 15;
             } else {
-              playExplodeSound();
-              score = Math.max(0, score - 20); // 扣分，最低為 0
+              playExplodeTone();
+              score = Math.max(0, score - 20);
             }
             scoreText.textContent = score;
             entities.splice(i, 1);
             continue;
           }
 
-          // 超出底端邊界移出
           if (e.y > canvasElement.height + 40) {
             entities.splice(i, 1);
           }
@@ -316,7 +371,7 @@
       requestAnimationFrame(renderLoop);
     }
 
-    // 初始化 MediaPipe Pose 模型
+    // MediaPipe Pose 初始化
     const pose = new Pose({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
     });
@@ -332,19 +387,19 @@
       detectedPose = results;
     });
 
-    // 啟動相機鏡頭
+    // 啟動相機
     const camera = new Camera(videoElement, {
       onFrame: async () => {
         await pose.send({ image: videoElement });
       },
-      width: 960,
-      height: 640
+      width: 1280,
+      height: 720
     });
 
     camera.start();
     requestAnimationFrame(renderLoop);
 
-    // 遊戲進程
+    // 流程控制
     function startGame() {
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
