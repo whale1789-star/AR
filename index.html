@@ -72,7 +72,7 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       backdrop-filter: blur(8px);
     }
-    /* 全螢幕切換按鈕 */
+    /* 全螢幕手動切換按鈕 */
     #fullscreen-btn {
       position: absolute;
       top: 15px;
@@ -162,7 +162,7 @@
       <div class="guide-box">
         <p>⚽ <strong>綠色球 (+15 分)</strong>：用「頭部頂擊」或「雙手拍打」得分！</p>
         <p>💣 <strong>紅色炸彈 (-20 分)</strong>：左右橫移閃避身軀，請勿碰觸！</p>
-        <p>💡 提示：點擊右上角 <strong>⛶</strong> 進入全螢幕，退後 2 公尺體驗最佳！</p>
+        <p>🚀 點擊下方按鈕將<strong>自動全螢幕</strong>啟動，請退後約 2 公尺預備！</p>
       </div>
       <button id="start-btn" class="action-btn">開始挑戰</button>
     </div>
@@ -187,7 +187,7 @@
     let entities = [];
     let detectedPose = null;
 
-    // 自適應調整畫布尺寸（確保全螢幕或視窗縮放時像素對齊）
+    // 自適應調整畫布尺寸
     function resizeCanvas() {
       canvasElement.width = container.clientWidth;
       canvasElement.height = container.clientHeight;
@@ -195,14 +195,23 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // 全螢幕切換邏輯
-    function toggleFullScreen() {
+    // 啟動全螢幕函式
+    function enterFullScreen() {
       if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         if (container.requestFullscreen) {
-          container.requestFullscreen();
+          container.requestFullscreen().catch(err => {
+            console.warn("全螢幕請求被限制或失敗:", err);
+          });
         } else if (container.webkitRequestFullscreen) {
           container.webkitRequestFullscreen();
         }
+      }
+    }
+
+    // 全螢幕手動切換開關
+    function toggleFullScreen() {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        enterFullScreen();
       } else {
         if (document.exitFullscreen) {
           document.exitFullscreen();
@@ -248,7 +257,7 @@
       osc.stop(audioCtx.currentTime + 0.25);
     }
 
-    // 生成物件（球體或炸彈）
+    // 生成物件（得分球或炸彈）
     function spawnEntity() {
       const isBomb = Math.random() < 0.35;
       const radius = isBomb ? 26 : 30;
@@ -262,7 +271,7 @@
       });
     }
 
-    // 骨架連線定義
+    // 骨架連線關節對應
     const POSE_CONNECTIONS = [
       [11, 12], [11, 13], [13, 15],
       [12, 14], [14, 16], [11, 23],
@@ -299,7 +308,6 @@
     // 主動畫更新循環
     function renderLoop() {
       canvasCtx.save();
-      // 繪製視訊背景
       canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
 
       if (detectedPose && detectedPose.poseLandmarks) {
@@ -317,7 +325,6 @@
           const e = entities[i];
           e.y += e.speedY;
 
-          // 繪製物件
           canvasCtx.beginPath();
           canvasCtx.arc(e.x, e.y, e.radius, 0, 2 * Math.PI);
           canvasCtx.fillStyle = e.color;
@@ -329,8 +336,8 @@
           let hit = false;
 
           if (landmarks) {
-            // 接球判定：頭部 (0)、雙手腕 (15, 16)
-            // 傷害判定：頭部、雙肩 (11, 12)、骨盆 (23, 24)
+            // 接球：頭部 (0)、雙手腕 (15, 16)
+            // 傷害：頭部、雙肩 (11, 12)、骨盆 (23, 24)
             const checkPoints = e.type === 'ball'
               ? [{ idx: 0, rad: 30 }, { idx: 15, rad: 22 }, { idx: 16, rad: 22 }]
               : [{ idx: 0, rad: 30 }, { idx: 11, rad: 25 }, { idx: 12, rad: 25 }, { idx: 23, rad: 25 }, { idx: 24, rad: 25 }];
@@ -399,11 +406,17 @@
     camera.start();
     requestAnimationFrame(renderLoop);
 
-    // 流程控制
+    // 遊戲進程控制：點擊時自動執行全螢幕
     function startGame() {
+      // 1. 自動觸發全螢幕
+      enterFullScreen();
+
+      // 2. 喚醒音效引擎
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
+
+      // 3. 狀態重置
       score = 0;
       timeLeft = 60;
       entities = [];
@@ -411,6 +424,9 @@
       timerText.textContent = timeLeft;
       isPlaying = true;
       overlayScreen.style.display = 'none';
+
+      // 延遲微調確保留出全螢幕過渡動畫時間重新校正畫布
+      setTimeout(resizeCanvas, 150);
 
       clearInterval(timerInterval);
       timerInterval = setInterval(() => {
@@ -430,6 +446,7 @@
       overlayScreen.style.display = 'flex';
     }
 
+    // 綁定按鈕點擊觸發全螢幕
     startBtn.addEventListener('click', startGame);
   </script>
 </body>
