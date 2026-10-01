@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>體感拍拍樂 - AR 體感小遊戲</title>
+  <title>CSIC體感全身動起來</title>
   <style>
     * {
       box-sizing: border-box;
@@ -11,7 +11,7 @@
       user-select: none;
     }
     body {
-      background: #1a1a2e;
+      background: #0f1016;
       color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       display: flex;
@@ -23,25 +23,27 @@
     }
     #ui-container {
       position: absolute;
-      top: 20px;
+      top: 15px;
       display: flex;
       gap: 30px;
-      font-size: 24px;
+      font-size: 22px;
       font-weight: bold;
       z-index: 10;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 12px 30px;
-      border-radius: 30px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(18, 18, 30, 0.75);
+      padding: 12px 35px;
+      border-radius: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
     }
     .game-box {
       position: relative;
       width: 960px;
-      height: 540px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-      border-radius: 16px;
+      height: 640px;
+      border-radius: 20px;
       overflow: hidden;
-      border: 2px solid #e94560;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+      border: 2px solid #3f72af;
+      background: #000;
     }
     video {
       display: none;
@@ -50,7 +52,7 @@
       width: 100%;
       height: 100%;
       display: block;
-      /* 鏡像翻轉，符合鏡子直覺 */
+      /* 水平鏡像，還原玩家面對鏡子的反射直覺 */
       transform: scaleX(-1);
     }
     #overlay-screen {
@@ -59,50 +61,66 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(15, 15, 26, 0.85);
+      background: rgba(10, 10, 20, 0.88);
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       z-index: 20;
+      text-align: center;
+      padding: 20px;
+    }
+    .guide-box {
+      margin: 20px 0;
+      text-align: left;
+      font-size: 16px;
+      line-height: 1.8;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 16px 24px;
+      border-radius: 12px;
     }
     button {
-      margin-top: 20px;
-      padding: 14px 40px;
+      margin-top: 10px;
+      padding: 14px 45px;
       font-size: 20px;
       font-weight: bold;
-      background: #e94560;
+      background: #3f72af;
       color: white;
       border: none;
       border-radius: 50px;
       cursor: pointer;
+      box-shadow: 0 4px 15px rgba(63, 114, 175, 0.4);
       transition: transform 0.2s, background 0.2s;
     }
     button:hover {
-      background: #ff5773;
+      background: #112d4e;
       transform: scale(1.05);
     }
   </style>
 
-  <!-- MediaPipe Hands & Camera Utils -->
+  <!-- MediaPipe Pose & Camera Utils -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
   <div id="ui-container">
-    <div>分數: <span id="score-text" style="color: #4ecca3;">0</span></div>
-    <div>倒數: <span id="timer-text" style="color: #ffd369;">60</span> 秒</div>
+    <div>分數: <span id="score-text" style="color: #00ffcc;">0</span></div>
+    <div>倒數: <span id="timer-text" style="color: #ffbe0b;">60</span> 秒</div>
   </div>
 
   <div class="game-box">
     <video id="webcam" playsinline></video>
-    <canvas id="output-canvas" width="960" height="540"></canvas>
+    <canvas id="output-canvas" width="960" height="640"></canvas>
     
     <div id="overlay-screen">
-      <h1 id="screen-title" style="font-size: 40px; margin-bottom: 10px;">體感拍彩球</h1>
-      <p id="screen-desc" style="color: #ccc; font-size: 18px;">請對準鏡頭，揮動手掌拍擊畫面上的彩色圓點！</p>
-      <button id="start-btn">開始遊戲</button>
+      <h1 id="screen-title" style="font-size: 38px; color: #f9f7f7;">全身動感避障與頂球</h1>
+      <div class="guide-box">
+        <p>⚽ <strong>綠色球 (加 15 分)</strong>：用「頭部頂擊」或「雙手拍打」接住它！</p>
+        <p>💣 <strong>紅色炸彈 (扣 20 分)</strong>：從上方掉落，請「左右閃避身軀」不要碰到！</p>
+        <p>💡 提示：請退後約 1.5 ~ 2 公尺，確保鏡頭能捕捉上半身或全身。</p>
+      </div>
+      <button id="start-btn">開始挑戰</button>
     </div>
   </div>
 
@@ -115,153 +133,225 @@
     const overlayScreen = document.getElementById('overlay-screen');
     const startBtn = document.getElementById('start-btn');
     const screenTitle = document.getElementById('screen-title');
-    const screenDesc = document.getElementById('screen-desc');
 
     let score = 0;
     let timeLeft = 60;
     let isPlaying = false;
     let timerInterval = null;
-    let targets = [];
-    let detectedHands = [];
+    let entities = []; // 包含得分球與掉落炸彈
+    let detectedPose = null;
 
-    // 音效合成（免載入外部音檔）
+    // Web Audio API 即時合成音效
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playHitTone() {
+    
+    function playHitBallSound() {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(520, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.12);
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
       gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.12);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.12);
+      osc.stop(audioCtx.currentTime + 0.15);
     }
 
-    // 隨機產生圓點
-    const COLORS = ['#FF4757', '#2ED573', '#1E90FF', '#FFA502', '#9B59B6'];
-    function spawnTarget() {
-      const radius = 28 + Math.random() * 12;
-      targets.push({
+    function playExplodeSound() {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.25);
+    }
+
+    // 生成物體：得分球（由下往上漂浮或定點落下）或炸彈（上方掉落）
+    function spawnEntity() {
+      const isBomb = Math.random() < 0.35; // 35% 機率是炸彈
+      const radius = isBomb ? 26 : 30;
+      entities.push({
+        type: isBomb ? 'bomb' : 'ball',
         x: radius + Math.random() * (canvasElement.width - radius * 2),
-        y: radius + Math.random() * (canvasElement.height - radius * 2),
+        y: -30,
+        speedY: 2.5 + Math.random() * 3.5,
         radius: radius,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
-        life: 240 // 存活幀數
+        color: isBomb ? '#ff0055' : '#00f5d4'
       });
     }
 
-    // 核心循環與判定
+    // 骨架連線關節對應定義
+    const POSE_CONNECTIONS = [
+      [11, 12], // 雙肩
+      [11, 13], [13, 15], // 左臂
+      [12, 14], [14, 16], // 右臂
+      [11, 23], [12, 24], // 軀幹
+      [23, 24]  // 骨盆
+    ];
+
+    function drawSkeleton(landmarks) {
+      canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      canvasCtx.lineWidth = 3;
+      
+      // 繪製骨幹連線
+      for (let [p1, p2] of POSE_CONNECTIONS) {
+        const ptA = landmarks[p1];
+        const ptB = landmarks[p2];
+        if (ptA && ptB && ptA.visibility > 0.5 && ptB.visibility > 0.5) {
+          canvasCtx.beginPath();
+          canvasCtx.moveTo(ptA.x * canvasElement.width, ptA.y * canvasElement.height);
+          canvasCtx.lineTo(ptB.x * canvasElement.width, ptB.y * canvasElement.height);
+          canvasCtx.stroke();
+        }
+      }
+
+      // 繪製頂球/拍擊的主動部位節點光環 (頭部 0, 雙手腕 15, 16)
+      [0, 15, 16].forEach(idx => {
+        const pt = landmarks[idx];
+        if (pt && pt.visibility > 0.5) {
+          const px = pt.x * canvasElement.width;
+          const py = pt.y * canvasElement.height;
+          canvasCtx.beginPath();
+          canvasCtx.arc(px, py, idx === 0 ? 25 : 16, 0, 2 * Math.PI);
+          canvasCtx.fillStyle = idx === 0 ? 'rgba(255, 215, 0, 0.5)' : 'rgba(0, 255, 200, 0.6)';
+          canvasCtx.fill();
+        }
+      });
+    }
+
+    // 遊戲主渲染循環
     function renderLoop() {
       canvasCtx.save();
-      // 繪製攝影機影像背景
+      // 繪製相機畫面底圖
       canvasCtx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
 
+      if (detectedPose && detectedPose.poseLandmarks) {
+        drawSkeleton(detectedPose.poseLandmarks);
+      }
+
       if (isPlaying) {
-        // 定期產生圓點（保持場上 3-5 個）
-        if (targets.length < 4 && Math.random() < 0.05) {
-          spawnTarget();
+        if (entities.length < 5 && Math.random() < 0.04) {
+          spawnEntity();
         }
 
-        // 碰撞檢查與更新
-        for (let i = targets.length - 1; i >= 0; i--) {
-          const t = targets[i];
-          t.life--;
+        // 碰撞檢測各部位
+        const landmarks = detectedPose?.poseLandmarks;
 
-          // 繪製目標光暈與球體
+        for (let i = entities.length - 1; i >= 0; i--) {
+          const e = entities[i];
+          e.y += e.speedY;
+
+          // 繪製目標物件
           canvasCtx.beginPath();
-          canvasCtx.arc(t.x, t.y, t.radius, 0, 2 * Math.PI);
-          canvasCtx.fillStyle = t.color;
-          canvasCtx.shadowColor = t.color;
-          canvasCtx.shadowBlur = 15;
+          canvasCtx.arc(e.x, e.y, e.radius, 0, 2 * Math.PI);
+          canvasCtx.fillStyle = e.color;
+          canvasCtx.shadowColor = e.color;
+          canvasCtx.shadowBlur = 12;
           canvasCtx.fill();
           canvasCtx.shadowBlur = 0;
 
-          // 偵測手部關鍵點碰撞（包含食指尖、手掌中心等）
           let hit = false;
-          detectedHands.forEach(hand => {
-            // 7: 食指關節, 8: 食指尖, 9: 中指關節, 12: 中指尖, 0: 手腕
-            const checkPoints = [0, 8, 9, 12];
-            for (let ptIdx of checkPoints) {
-              const pt = hand[ptIdx];
-              const hx = pt.x * canvasElement.width;
-              const hy = pt.y * canvasElement.height;
-              const dist = Math.hypot(hx - t.x, hy - t.y);
 
-              if (dist < t.radius + 15) {
-                hit = true;
-                break;
+          if (landmarks) {
+            // 定義頂球部位（頭部 0, 雙手腕 15, 16）
+            const interactionPoints = [
+              { idx: 0, rad: 30 },  // 頭部（鼻子週圍）
+              { idx: 15, rad: 20 }, // 左手腕
+              { idx: 16, rad: 20 }  // 右手腕
+            ];
+
+            // 定義會被炸彈炸到的身體部位（頭、肩、軀幹中心）
+            const bodyHurtPoints = [
+              { idx: 0, rad: 30 },  // 頭
+              { idx: 11, rad: 25 }, // 左肩
+              { idx: 12, rad: 25 }, // 右肩
+              { idx: 23, rad: 25 }, // 左腰
+              { idx: 24, rad: 25 }  // 右腰
+            ];
+
+            const targetCheckPoints = e.type === 'ball' ? interactionPoints : bodyHurtPoints;
+
+            for (let check of targetCheckPoints) {
+              const lm = landmarks[check.idx];
+              if (lm && lm.visibility > 0.5) {
+                const lx = lm.x * canvasElement.width;
+                const ly = lm.y * canvasElement.height;
+                const dist = Math.hypot(lx - e.x, ly - e.y);
+
+                if (dist < e.radius + check.rad) {
+                  hit = true;
+                  break;
+                }
               }
             }
-          });
+          }
 
           if (hit) {
-            playHitTone();
-            score += 10;
+            if (e.type === 'ball') {
+              playHitBallSound();
+              score += 15;
+            } else {
+              playExplodeSound();
+              score = Math.max(0, score - 20); // 扣分，最低為 0
+            }
             scoreText.textContent = score;
-            targets.splice(i, 1);
+            entities.splice(i, 1);
             continue;
           }
 
-          if (t.life <= 0) {
-            targets.splice(i, 1);
+          // 超出底端邊界移出
+          if (e.y > canvasElement.height + 40) {
+            entities.splice(i, 1);
           }
         }
-
-        // 視覺化標記手部位置（輔助玩家掌握座標）
-        detectedHands.forEach(hand => {
-          [8, 12].forEach(idx => {
-            const tip = hand[idx];
-            canvasCtx.beginPath();
-            canvasCtx.arc(tip.x * canvasElement.width, tip.y * canvasElement.height, 10, 0, 2 * Math.PI);
-            canvasCtx.fillStyle = '#00F2FE';
-            canvasCtx.fill();
-          });
-        });
       }
 
       canvasCtx.restore();
       requestAnimationFrame(renderLoop);
     }
 
-    // MediaPipe Hands 初始化設定
-    const hands = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    // 初始化 MediaPipe Pose 模型
+    const pose = new Pose({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
     });
 
-    hands.setOptions({
-      maxNumHands: 2,
+    pose.setOptions({
       modelComplexity: 1,
+      smoothLandmarks: true,
       minDetectionConfidence: 0.6,
       minTrackingConfidence: 0.6
     });
 
-    hands.onResults((results) => {
-      detectedHands = results.multiHandLandmarks || [];
+    pose.onResults((results) => {
+      detectedPose = results;
     });
 
-    // 啟動相機
+    // 啟動相機鏡頭
     const camera = new Camera(videoElement, {
       onFrame: async () => {
-        await hands.send({ image: videoElement });
+        await pose.send({ image: videoElement });
       },
       width: 960,
-      height: 540
+      height: 640
     });
 
     camera.start();
     requestAnimationFrame(renderLoop);
 
-    // 流程控制
+    // 遊戲進程
     function startGame() {
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
       score = 0;
       timeLeft = 60;
-      targets = [];
+      entities = [];
       scoreText.textContent = score;
       timerText.textContent = timeLeft;
       isPlaying = true;
@@ -280,9 +370,8 @@
     function endGame() {
       isPlaying = false;
       clearInterval(timerInterval);
-      screenTitle.textContent = "時間到！";
-      screenDesc.innerHTML = `你的最終得分為：<strong style="color: #4ecca3; font-size: 26px;">${score}</strong> 分`;
-      startBtn.textContent = "再玩一次";
+      screenTitle.textContent = "挑戰結束！";
+      startBtn.textContent = "再挑戰一次";
       overlayScreen.style.display = 'flex';
     }
 
